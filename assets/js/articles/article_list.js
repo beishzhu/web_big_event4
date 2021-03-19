@@ -1,113 +1,136 @@
 $(function() {
     var layer = layui.layer
-    var from = layui.form
-    getArticleLists()
+    var form = layui.form
+    var laypage = layui.laypage
+        // 文章列表查询参数
+    var query = {
+        pagenum: 1, //文章列表默认显示第一页
+        pagesize: 2,
+        cate_id: '', //文章分类id
+        state: '' //文章发布状态
+    }
+    getArticleLIst()
+    getState()
 
-    // 渲染文章列表
-    function getArticleLists() {
+    // 时间格式化
+    template.defaults.imports.dataFormat = function(date) {
+        const dt = new Date(date)
+
+        var y = dt.getFullYear()
+        var m = padZero(dt.getMonth() + 1)
+        var d = padZero(dt.getDate())
+        var hh = padZero(dt.getHours())
+        var mm = padZero(dt.getMinutes())
+        var ss = padZero(dt.getSeconds())
+
+        return y + '-' + m + '-' + d + ' ' + hh + ':' + mm + ':' + ss
+    }
+
+
+    // 时间补0
+    function padZero(p) {
+        return p > 9 ? p : '0' + p
+    }
+
+    // 获取文章列表
+    function getArticleLIst() {
+        $.ajax({
+            method: 'GET',
+            url: '/my/article/list',
+            data: query,
+            success: function(res) {
+                if (res.status !== 0) return layer.msg(res.message)
+                console.log(res);
+                // 调用模板
+                var strHtml = template('tpl-list', res);
+                $('tbody').html(strHtml)
+                    // 渲染分页
+                if (res.total < 1) {
+                    $('#pageBox').hide()
+                }
+                renderPage(res.total)
+
+
+            }
+        })
+
+    }
+    // 获取文章状态
+    function getState() {
         $.ajax({
             method: 'GET',
             url: '/my/article/cates',
             success: function(res) {
-                console.log(res);
-                if (res.status !== 0) return layer.msg(res.message);
-                var htmlStr = template('tpl-table', res)
-                $('tbody').html(htmlStr)
+                if (res.status !== 0) return layer.msg(res.message)
+                    // 调用模板引擎渲染文章状态
+                var strHtml = template('tpl-state', res)
+                console.log(strHtml);
+                $("[name=cate_id]").html(strHtml)
+                    // 重新渲染表单结构
+                form.render();
             }
         })
     }
 
-    // 添加文章分类按钮
-    var indexAdd = null;
-    $('#btnAdd').on('click', function() {
-        indexAdd = layer.open({
-            type: 1,
-            area: ['500px', '250px'],
-            title: '添加文章分类',
-            content: $('#addArticleListDialog').html()
-        });
-    })
-
-    //通过代理形式为表单绑定 submit事件 因为表单内容是动态添加的，只能使用种方式
-    $('body').on('submit', '#checkAdd', function(e) {
-        // 阻止表单默认提交行为
+    // 为筛选表单绑定 submit 事件
+    $('#search-btn').on('submit', function(e) {
         e.preventDefault()
-            // 向服务器发送添加分类文章
-        $.ajax({
-            method: 'POST',
-            url: '/my/article/addcates',
-            data: $(this).serialize(),
-            success: function(res) {
-                if (res.status !== 0) return layer.msg(res.message)
-                getArticleLists()
-                layer.msg(res.message)
-                    // 关闭弹出层
-                layer.close(indexAdd)
+        var cate_id = $('[name=cate_id]').val()
+        var state = $('[name=state]').val()
+
+        query.cate_id = cate_id
+        query.state = state
+
+        // 根据最新的筛选条件从新渲染表格数据
+        getArticleLIst()
+    })
+
+    // 分页
+    function renderPage(total) {
+        laypage.render({
+            elem: 'pageBox',
+            count: total,
+            limit: query.pagesize,
+            curr: query.pagenum,
+            layout: ['count', 'limit', 'prev', 'page', 'next', 'skip'],
+            limits: [2, 3, 5, 10],
+            jump: function(obj, first) {
+                console.log(obj.curr);
+                query.pagenum = obj.curr
+                query.pagesize = obj.limit
+                if (!first) getArticleLIst()
             }
         })
-    });
+    }
 
-    //通过代理形式为表单绑定事件 编辑文章列表
-    // 编辑文章分类按钮
-    var indexEdit = null;
-    $('body').on('click', '#editBtn', function() {
-        // console.log(1);
-        indexEdit = layer.open({
-                type: 1,
-                area: ['500px', '250px'],
-                title: '编辑文章分类',
-                content: $('#editArticleListDialog').html()
-            })
-            // 通过自定义属性获取分类文章id
+    // 删除文章 通过动态方式去删除
+    $('body').on('click', '.delete-btn', function() {
+        // 当前页面删除按钮的个数
+        var len = $('.delete-btn').length
+        console.log(len);
         var id = $(this).attr('data-id')
-            // console.log(id);
-            // 发送ajax请求
-        $.ajax({
-            method: 'GET',
-            url: '/my/article/cates/' + id,
-            success: function(res) {
-                if (res.status !== 0) return layer.msg(res.message)
-                    // console.log(res);
-                from.val("EditFrom", res.data)
-            }
-        })
-    })
 
-    // 通过代理形式 处理确认修改按钮 提交修改内容 更新文章分类的数据
-    $('body').on('submit', '#EditFrom', function(e) {
-        e.preventDefault();
-        $.ajax({
-            method: 'POST',
-            url: '/my/article/updatecate',
-            data: $(this).serialize(),
-            success: function(res) {
-                if (res.status !== 0) return layer.msg(res.message)
-                getArticleLists()
-                    // 关闭修改窗口
-                layer.close(indexEdit)
-                layer.msg(res.message)
-            }
-        })
-    })
-
-    // 通过代理形式 根据id 删除文章列表
-    $('body').on('click', '.deleteBtn', function() {
-        var id = $(this).attr('data-id');
-        // 确认是否删除弹窗
-        layer.confirm('确认删除?', { icon: 3, title: '提示' }, function(index) {
+        // 询问用户是否要删除
+        layer.confirm('确定要删除文章吗?', { icon: 3, title: '提示' }, function(index) {
+            //do something
             $.ajax({
                 method: 'GET',
-                url: '/my/article/deletecate/' + id,
+                url: '/my/article/delete/' + id,
                 success: function(res) {
                     if (res.status !== 0) return layer.msg(res.message)
                     layer.msg(res.message)
+                        // 判断当前页删除按钮是否等于1 如果等于1 就让当前的页码值减1
+                    if (len === 1) {
+                        query.pagenum = query.pagenum === 1 ? 1 : query.pagenum - 1
+                    }
 
+
+                    getArticleLIst()
                 }
             })
 
             layer.close(index);
-            getArticleLists()
         });
-
     })
+
 })

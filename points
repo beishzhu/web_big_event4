@@ -1,0 +1,36 @@
+一. article_pub.js  
+1. // form.render() 一定要记得调用这个方法渲染页面
+
+2.  // 获取用户选择的文件
+        var filelist = e.target.files
+
+3.  //拿到用户选择的文件 将文件转换为路径
+        var newImgURL = URL.createObjectURL(filelist[0])
+
+4. // 基于form表单快速创建 formData对象
+        var fd = new FormData($(this)[0])
+
+5.  // 如果向服务器提交的 FormData格式的数据 必须传递这两个参数
+            contentType: false,
+            processData: false,
+
+
+二：article_list
+ // 时间格式化
+    template.defaults.imports.dataFormat = function(date) {
+        const dt = new Date(date)
+
+        var y = dt.getFullYear()
+        var m = padZero(dt.getMonth() + 1)
+        var d = padZero(dt.getDate())
+        var hh = padZero(dt.getHours())
+        var mm = padZero(dt.getMinutes())
+        var ss = padZero(dt.getSeconds())
+
+        return y + '-' + m + '-' + d + ' ' + hh + ':' + mm + ':' + ss
+    }
+
+    // 时间补0
+    function padZero(p) {
+        return p > 9 ? p : '0' + p
+    }

@@ -17,7 +17,7 @@ $(function() {
     $('#file').hide()
     $('#uploadvarter').on('click', function() {
         $('#file').click()
-        console.log(1);
+            // console.log(1);
     })
 
     // 选择图片change事件
